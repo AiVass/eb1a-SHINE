@@ -1,0 +1,892 @@
+import { useState } from "react";
+
+const phases = [
+  {
+    id: 0,
+    label: "Phase 0",
+    title: "DISCOVERY",
+    subtitle: "Am I eligible?",
+    color: "#C9A84C",
+    bg: "#1a1a2e",
+    artifacts: [
+      {
+        id: "0.1",
+        title: "EB-1A Self-Eligibility Screener",
+        type: "Interactive Tool",
+        input: "LinkedIn URL or career summary",
+        output: "Go / No-Go score + top 3 viable criteria",
+        feedsInto: "1.1",
+        format: "🧮 Scored Quiz",
+        urgency: "ENTRY POINT",
+        description: "25-question scored assessment. Covers all 10 USCIS criteria. Outputs a probability band (Strong / Viable / Too Early) and flags which criteria are immediately arguable vs. need building.",
+      },
+      {
+        id: "0.2",
+        title: "EB-1A vs EB-2 NIW Decision Guide",
+        type: "Decision Guide",
+        input: "Output from 0.1",
+        output: "Recommended pathway with rationale",
+        feedsInto: "1.1",
+        format: "📋 Decision Tree",
+        urgency: "OPTIONAL",
+        description: "For Indian/Chinese nationals where priority dates matter critically. Explains chargeability, priority date strategy, and when EB-1A is worth pursuing over NIW even with a weaker case.",
+      },
+      {
+        id: "0.3",
+        title: "Profile Type Identifier: Founder vs. Specialist",
+        type: "Decision Guide",
+        input: "Employment status + business ownership history",
+        output: "Profile type (Founder / Specialist / Hybrid) + downstream artifact routing",
+        feedsInto: "1.2, 1.3, 2.5, 5.5A or 5.6",
+        format: "🔀 Fork Decision",
+        urgency: "CRITICAL FIRST STEP",
+        isFork: true,
+        forkPaths: [
+          { label: "SPECIALIST PATH", color: "#4A7FC1", desc: "Employed professional, researcher, or academic. Uses Personal Statement (5.5A). Field of endeavor = professional domain. Criterion 8 centers on employer role." },
+          { label: "FOUNDER PATH", color: "#C9A84C", desc: "Startup founder, co-founder, or entrepreneur. Uses Business Plan (5.6) instead of Personal Statement. Field of endeavor wraps the business. Criterion 5 centers on the innovation built. Criterion 8 = critical role as founder." },
+        ],
+        description: "The most important routing decision in the entire system. A founder's petition is architecturally different from a specialist's — the field definition, evidence emphasis, criteria ordering, and culminating document all change. This artifact establishes the profile type early so every downstream artifact is tailored correctly. Hybrid profiles (employed + side venture or acqui-hire) are also addressed.",
+      },
+    ],
+  },
+  {
+    id: 1,
+    label: "Phase 1",
+    title: "FOUNDATION",
+    subtitle: "What is my case?",
+    color: "#4A7FC1",
+    bg: "#0f2744",
+    artifacts: [
+      {
+        id: "1.1",
+        title: "EB-1A Formatted CV Template",
+        type: "Template",
+        input: "Existing CV / LinkedIn export",
+        output: "Criteria-mapped CV (evidence organized by USCIS criterion)",
+        feedsInto: "1.2, 2.0",
+        format: "📄 Word Template",
+        urgency: "CRITICAL FIRST STEP",
+        description: "Not a standard chronological CV. Sections are labeled by EB-1A criterion. Each bullet point maps to a specific evidence category. This becomes the source of truth for the entire petition.",
+      },
+      {
+        id: "1.2",
+        title: "Field of Endeavor Definition Workbook",
+        type: "Workbook",
+        input: "Criteria-mapped CV (1.1)",
+        output: "Defined field, SOC code, peer group, top-5% thesis",
+        feedsInto: "2.0, 5.1, 5.4",
+        format: "📓 Guided Workbook",
+        urgency: "CRITICAL — nothing works without this",
+        description: "Step-by-step framework to define the candidate's field with the right specificity. Too broad = peer group is too large. Too narrow = USCIS challenge risk. Includes 3 formulation options + decision rubric.",
+      },
+      {
+        id: "1.3",
+        title: "Top 5% Positioning Worksheet",
+        type: "Worksheet",
+        input: "Field definition (1.2)",
+        output: "Peer group definition + positioning thesis sentence",
+        feedsInto: "2.0, 4.4, 5.4",
+        format: "📊 Worksheet",
+        urgency: "HIGH",
+        description: "Forces the candidate to answer: Who are my peers? Who is in the top 5%? Why am I among them? This becomes the spine of the final merits determination argument.",
+      },
+    ],
+  },
+  {
+    id: 2,
+    label: "Phase 2",
+    title: "CRITERIA ANALYSIS",
+    subtitle: "How strong is my case?",
+    color: "#2E8B57",
+    bg: "#0a2010",
+    artifacts: [
+      {
+        id: "2.0",
+        title: "10-Criteria Assessment Master Matrix",
+        type: "Assessment Tool",
+        input: "Criteria-mapped CV (1.1) + Field definition (1.2)",
+        output: "Status for all 10 criteria: ✓ / ⚠ / ✗ + priority order for petition",
+        feedsInto: "2.1–2.9, 3.3",
+        format: "🔢 Scored Matrix",
+        urgency: "CRITICAL",
+        description: "The diagnostic engine. Scores all 10 USCIS criteria. Outputs filing readiness, recommended petition order (strongest to weakest), and which criteria to lead with vs. skip.",
+      },
+      {
+        id: "2.1",
+        title: "Criterion 1: Awards Evidence Builder",
+        type: "Evidence Builder",
+        input: "Awards listed in CV (1.1)",
+        output: "Award-by-award USCIS analysis + petition narrative paragraphs",
+        feedsInto: "3.1, 5.3",
+        format: "📝 Structured Template",
+        urgency: "HIGH if awards exist",
+        description: "Two-part test per award: (a) nationally/internationally recognized? (b) for excellence in the field? Includes selectivity documentation guide, exhibit checklist, and ready-to-file petition language.",
+      },
+      {
+        id: "2.2",
+        title: "Criterion 2: Memberships Strategy Kit",
+        type: "Strategy Kit",
+        input: "Professional background from CV (1.1)",
+        output: "Ranked target organizations + application roadmap",
+        feedsInto: "3.1, 3.3, 5.3",
+        format: "🗺 Strategy Guide + Tracker",
+        urgency: "CRITICAL if none exist",
+        description: "Tier 1/2/3 target organizations (IEEE, ACM, ASA, INFORMS, etc.) with application requirements, timelines, and nomination strategy. The fastest criterion to build from zero if you start early.",
+      },
+      {
+        id: "2.3",
+        title: "Criterion 3: Media Coverage Outreach Kit",
+        type: "Outreach Kit",
+        input: "Career highlights + field definition (1.2)",
+        output: "Ranked media targets + pitch templates + tracking dashboard",
+        feedsInto: "3.1, 5.3",
+        format: "📢 Outreach System",
+        urgency: "HIGH — long lead time",
+        description: "Tiered media list (Tier 1: Forbes/VentureBeat, Tier 2: KDnuggets/DataScience Central, Tier 3: podcasts/industry blogs). Includes pitch email templates by publication type + HARO/Connectively strategy.",
+      },
+      {
+        id: "2.4",
+        title: "Criterion 4: Judging Documentation Template",
+        type: "Documentation Template",
+        input: "Any judging/reviewing activities",
+        output: "Exhibit-ready judging documentation + outreach scripts for new opportunities",
+        feedsInto: "3.1, 5.3",
+        format: "📋 Documentation Pack",
+        urgency: "MODERATE — fast to build",
+        description: "Covers hackathon judging, conference peer review, journal reviewing, grant panels. Includes how to request retroactive confirmation letters, how to register as reviewer for 2026 conferences (with deadlines), and exhibit packaging guide.",
+      },
+      {
+        id: "2.5",
+        title: "Criterion 5: Original Contributions Quantification Workbook",
+        type: "Workbook",
+        input: "Work history + contributions from CV (1.1)",
+        output: "Quantified contribution statements + impact narrative",
+        feedsInto: "3.1, 4.4, 5.3",
+        format: "📓 Workbook",
+        urgency: "CRITICAL — most common RFE target",
+        description: "The hardest criterion to nail. Uses the formula: [Action] + [System/Project] + [Quantified Outcome]. Forces candidates to attach numbers to every claim. Includes how to request metrics from employers within NDA limits.",
+      },
+      {
+        id: "2.6",
+        title: "Criterion 6: Scholarly Authorship Evidence Package",
+        type: "Evidence Package",
+        input: "Publications, books, articles, blog content",
+        output: "Publication inventory + citation documentation + exhibit checklist",
+        feedsInto: "3.1, 5.3",
+        format: "📚 Evidence Package",
+        urgency: "HIGH if publications exist",
+        description: "Covers books, peer-reviewed papers, conference papers, arXiv preprints, and technical reports. Includes how to document citation counts, how to pitch new publications if record is thin, and how to frame aging publications.",
+      },
+      {
+        id: "2.8",
+        title: "Criterion 8: Leading/Critical Role Evidence Builder",
+        type: "Evidence Builder",
+        input: "Employment history + role documentation",
+        output: "Role evidence package + org chart request templates + petition narrative",
+        feedsInto: "3.1, 4.4, 5.3",
+        format: "🏛 Evidence Builder",
+        urgency: "CRITICAL — usually the strongest criterion",
+        description: "Dual-prong analysis: (a) leading role = team size, budget, strategic authority; (b) critical role = but-for test — what wouldn't exist without you specifically. Includes distinguished reputation documentation guide for each employer.",
+      },
+      {
+        id: "2.9",
+        title: "Criterion 9: High Salary Benchmarking Kit",
+        type: "Benchmarking Kit",
+        input: "Salary history + location data",
+        output: "Percentile analysis showing top 10% positioning + exhibit-ready report",
+        feedsInto: "3.1, 5.3",
+        format: "💰 Analysis Kit",
+        urgency: "HIGH — often easiest to prove",
+        description: "Uses BLS, Levels.fyi, H-1B LCA database, and Glassdoor data. Critical rule: always benchmark against U.S. market, never country of birth. Includes compensation analyst brief template and comparator table format.",
+      },
+    ],
+  },
+  {
+    id: 3,
+    label: "Phase 3",
+    title: "EVIDENCE BUILDING",
+    subtitle: "Gather and organize",
+    color: "#8B5CF6",
+    bg: "#1a0a2e",
+    artifacts: [
+      {
+        id: "3.1",
+        title: "Master Evidence Inventory Tracker",
+        type: "Tracker",
+        input: "Outputs from all Phase 2 artifact",
+        output: "Complete evidence catalog with status, exhibit #, and gaps identified",
+        feedsInto: "3.3, 6.1",
+        format: "📊 Master Spreadsheet",
+        urgency: "CRITICAL — controls everything",
+        description: "The single source of truth for all evidence. Organized by criterion. Columns: Evidence Item / Status / Exhibit # / Document Type / Notes / Gap Flag. Updated continuously through the petition process.",
+      },
+      {
+        id: "3.2",
+        title: "Exhibit Organization & Labeling System",
+        type: "System Guide",
+        input: "Evidence inventory (3.1)",
+        output: "Properly labeled, paginated exhibit package ready for filing",
+        feedsInto: "6.1, 6.2",
+        format: "🗂 System + Templates",
+        urgency: "HIGH",
+        description: "Naming conventions, folder structure, exhibit numbering (1.1, 1.2, 2.1…), cover page templates for each exhibit, and exhibit summary paragraph format. Ensures USCIS adjudicator can navigate the package.",
+      },
+      {
+        id: "3.3",
+        title: "Gap Analysis + 6-Month Remediation Planner",
+        type: "Planning Tool",
+        input: "Master matrix (2.0) + evidence inventory (3.1)",
+        output: "Prioritized action plan with weekly milestones",
+        feedsInto: "All Phase 2–4 artifacts",
+        format: "🗓 Planner",
+        urgency: "HIGH",
+        description: "Converts gap analysis into a concrete weekly schedule. Separates controllable evidence (letters, memberships, documentation) from uncontrollable (awards, media). Includes contingency logic: what to do if X doesn't come through.",
+      },
+    ],
+  },
+  {
+    id: 4,
+    label: "Phase 4",
+    title: "EXPERT LETTERS",
+    subtitle: "Build your support network",
+    color: "#D97706",
+    bg: "#1a1000",
+    artifacts: [
+      {
+        id: "4.1",
+        title: "Letter Writer Identification Matrix",
+        type: "Strategy Tool",
+        input: "CV (1.1) + field definition (1.2) + contributions (2.5)",
+        output: "Prioritized list of 10–12 target letter writers by tier and value",
+        feedsInto: "4.2, 4.3, 4.4",
+        format: "🎯 Strategy Matrix",
+        urgency: "CRITICAL — most time-consuming part",
+        description: "Tier 1 (independent U.S. experts) / Tier 2 (former managers/executives) / Tier 3 (academic mentors / industry peers). Includes cold outreach strategy for professors and what to offer (honorarium guidance: $2K–$5K).",
+      },
+      {
+        id: "4.2",
+        title: "Letter Request Email Templates",
+        type: "Template Pack",
+        input: "Letter writer targets (4.1)",
+        output: "Customizable outreach emails for each writer type",
+        feedsInto: "4.3",
+        format: "✉️ Email Templates",
+        urgency: "HIGH",
+        description: "6 templates: (a) former manager, (b) independent academic, (c) cold outreach to professor, (d) industry peer, (e) client executive, (f) academic mentor. Each template explains EB-1A criteria without legal jargon.",
+      },
+      {
+        id: "4.3",
+        title: "Evidence Portfolio for Letter Writers",
+        type: "Package Template",
+        input: "CV (1.1) + quantified contributions (2.5) + exhibit samples",
+        output: "Professional briefing package sent to each letter writer",
+        feedsInto: "4.4",
+        format: "📦 Briefing Package",
+        urgency: "HIGH",
+        description: "What to send a letter writer: 1-page candidate bio, key accomplishments with metrics, EB-1A criteria explained, what the letter needs to address. NOT a draft letter — bullet points only. Includes NDA-safe contribution framing guide.",
+      },
+      {
+        id: "4.4",
+        title: "Letter Briefing Document (per writer)",
+        type: "Template",
+        input: "Writer's relationship + criteria they will address",
+        output: "Personalized briefing specifying exactly what each letter must say",
+        feedsInto: "4.5",
+        format: "📝 Per-Writer Brief",
+        urgency: "CRITICAL — quality control",
+        description: "One document per letter writer. Specifies: 2–4 EB-1A criteria to address, specific contributions to mention, metrics to include, comparative statement required ('top X% in field'), and the definitive conclusion language.",
+      },
+      {
+        id: "4.5",
+        title: "Letter Quality Review Checklist",
+        type: "Checklist",
+        input: "Received draft letters",
+        output: "Pass/Fail review + revision request template",
+        feedsInto: "6.2",
+        format: "✅ Review Checklist",
+        urgency: "HIGH",
+        description: "8-point checklist: writer credentials stated, field definition included, criteria addressed by name, comparative statement present, quantified metrics cited, not generic/boilerplate, 3+ pages, strong unambiguous conclusion. Includes polite revision request email template.",
+      },
+    ],
+  },
+  {
+    id: 5,
+    label: "Phase 5",
+    title: "PETITION DRAFTING",
+    subtitle: "Write your case",
+    color: "#DC2626",
+    bg: "#1a0808",
+    artifacts: [
+      {
+        id: "5.1",
+        title: "Summary of Contributions (SOC) — Master Template",
+        type: "Core Document",
+        input: "All Phase 2 criterion outputs + field definition (1.2)",
+        output: "Complete narrative of candidate's extraordinary ability by criterion",
+        feedsInto: "5.4",
+        format: "📄 Master Narrative",
+        urgency: "CRITICAL — feeds the entire petition",
+        description: "The engine document. Organized by criterion. Each section: legal standard → evidence → petition-ready narrative paragraph. This document IS the body of the petition cover letter once edited. Complete it last after all evidence is collected.",
+      },
+      {
+        id: "5.2",
+        title: "Field of Endeavor Statement",
+        type: "Petition Section",
+        input: "Field definition (1.2) + top-5% worksheet (1.3)",
+        output: "2–3 paragraph field statement ready for petition",
+        feedsInto: "5.4",
+        format: "📝 Petition Language",
+        urgency: "HIGH",
+        description: "Defines the field, establishes the peer group, sets up the top-5% argument. Uses SOC code. This section goes first in the petition cover letter and frames every criterion that follows.",
+      },
+      {
+        id: "5.3",
+        title: "Criterion-by-Criterion Narrative Drafts",
+        type: "Petition Sections",
+        input: "SOC sections from Phase 2 evidence builders",
+        output: "9 criterion narrative sections (1 per applicable criterion)",
+        feedsInto: "5.4",
+        format: "📝 Modular Drafts",
+        urgency: "CRITICAL",
+        description: "One modular section per criterion: legal standard → evidence narrative → exhibit references → closing argument. Ordered strongest-to-weakest for filing. Each section is self-contained but connects to the overall narrative.",
+      },
+      {
+        id: "5.4",
+        title: "Petition Cover Letter — Full I-140 Template",
+        type: "Core Filing Document",
+        input: "SOC (5.1) + field statement (5.2) + criterion drafts (5.3)",
+        output: "Complete I-140 cover letter ready for attorney review or self-filing",
+        feedsInto: "6.2",
+        format: "📄 Full Legal Document",
+        urgency: "CRITICAL",
+        description: "The complete petition cover letter. Structure: (1) Introduction & Field, (2) Kazarian Step 1 — criteria met, (3) Kazarian Step 2 — final merits determination, (4) Intended future contributions, (5) Conclusion. Includes all regulatory citations.",
+      },
+      {
+        id: "5.5A",
+        title: "Personal Statement Template",
+        type: "Template",
+        input: "Career narrative + intended U.S. contributions",
+        output: "Personal statement on continued extraordinary work in U.S.",
+        feedsInto: "5.4, 6.2",
+        format: "📝 Narrative Template",
+        urgency: "HIGH",
+        pathTag: "SPECIALIST",
+        description: "For employed professionals, researchers, and academics. Covers: (a) current and intended field of work, (b) how work benefits U.S. national interests, (c) why permanent residence is needed. 2–4 pages. NOT required for founders who file a Business Plan instead.",
+      },
+      {
+        id: "5.6",
+        title: "EB-1A Business Plan Template",
+        type: "Core Filing Document",
+        input: "Company description, product, market, traction, team, U.S. operations plan",
+        output: "USCIS-standard business plan proving continued extraordinary work in the U.S.",
+        feedsInto: "5.4, 6.2",
+        format: "📊 Business Plan",
+        urgency: "CRITICAL — founders cannot file without this",
+        pathTag: "FOUNDER",
+        description: "Replaces the Personal Statement for founders. Must cover: (1) Executive Summary — the extraordinary innovation, (2) Field of Endeavor narrative — positioning the company in the industry, (3) Product/Service built and market significance, (4) Traction & Commercial Validation — revenue, users, funding, clients, (5) Team — founder's critical role vs. others, (6) U.S. Market Strategy, (7) National Benefit Statement. Length: 15–25 pages. This document also carries the Criterion 5 (original contributions) and Criterion 10 (commercial success) narrative for founders.",
+      },
+    ],
+  },
+  {
+    id: 6,
+    label: "Phase 6",
+    title: "ASSEMBLY & FILING",
+    subtitle: "Submit with confidence",
+    color: "#059669",
+    bg: "#001a10",
+    artifacts: [
+      {
+        id: "6.1",
+        title: "Exhibit Index + Exhibit Summary Templates",
+        type: "Filing Component",
+        input: "Evidence inventory (3.1) + all collected exhibits",
+        output: "Formatted exhibit index + one-paragraph summaries for each exhibit",
+        feedsInto: "6.2",
+        format: "📋 Index Templates",
+        urgency: "HIGH",
+        description: "Every exhibit gets: (a) number (1.1, 1.2…), (b) title, (c) one-sentence description of what it proves. The exhibit index is submitted with the petition. Adjudicators use it to navigate a package that may be 500+ pages.",
+      },
+      {
+        id: "6.2",
+        title: "Complete Filing Package Checklist",
+        type: "Filing Checklist",
+        input: "All petition components",
+        output: "Go/No-Go filing decision with every item verified",
+        feedsInto: "USCIS",
+        format: "✅ Master Checklist",
+        urgency: "CRITICAL — final gate",
+        description: "Covers: Form I-140, cover letter, personal statement, all exhibits, translations, fees ($715 + optional $2,805 premium), correct USCIS address, pagination, exhibit references verified. Nothing gets filed until every box is checked.",
+      },
+      {
+        id: "6.3",
+        title: "Premium Processing Decision Guide",
+        type: "Decision Guide",
+        input: "Visa status + priority date situation",
+        output: "Yes/No recommendation on I-907 with timing rationale",
+        feedsInto: "6.2",
+        format: "📋 Decision Guide",
+        urgency: "HIGH for Indian nationals",
+        description: "Critical for Indian/Chinese nationals where priority dates and chargeability matter. Explains: when premium processing saves time vs. wastes money, RFE risk assessment, and how to sequence premium processing with I-485.",
+      },
+      {
+        id: "6.4",
+        title: "RFE Anticipation Guide + Response Framework",
+        type: "Defense Document",
+        input: "Filed petition components",
+        output: "Pre-built responses for the 8 most common EB-1A RFE types",
+        feedsInto: "USCIS response",
+        format: "🛡 Defense Kit",
+        urgency: "HIGH — prepare before filing",
+        description: "The 8 most common RFE grounds: (1) criteria count insufficient, (2) critical role not individualized, (3) organization reputation not established, (4) award not nationally recognized, (5) salary benchmarking insufficient, (6) contributions not quantified, (7) letters too generic, (8) final merits not addressed. Each has a response framework.",
+      },
+    ],
+  },
+];
+
+const typeColors = {
+  "Interactive Tool": "#C9A84C",
+  "Decision Guide": "#4A7FC1",
+  "Template": "#4A7FC1",
+  "Workbook": "#2E8B57",
+  "Worksheet": "#2E8B57",
+  "Assessment Tool": "#2E8B57",
+  "Evidence Builder": "#8B5CF6",
+  "Strategy Kit": "#8B5CF6",
+  "Outreach Kit": "#D97706",
+  "Documentation Template": "#8B5CF6",
+  "Benchmarking Kit": "#059669",
+  "Evidence Package": "#059669",
+  "Tracker": "#DC2626",
+  "System Guide": "#DC2626",
+  "Planning Tool": "#DC2626",
+  "Strategy Tool": "#D97706",
+  "Template Pack": "#D97706",
+  "Package Template": "#D97706",
+  "Checklist": "#059669",
+  "Core Document": "#DC2626",
+  "Petition Section": "#DC2626",
+  "Petition Sections": "#DC2626",
+  "Core Filing Document": "#DC2626",
+  "Filing Component": "#059669",
+  "Filing Checklist": "#059669",
+  "Defense Document": "#059669",
+};
+
+const urgencyStyle = {
+  "ENTRY POINT": { bg: "#C9A84C22", border: "#C9A84C", text: "#C9A84C" },
+  "CRITICAL FIRST STEP": { bg: "#DC262622", border: "#DC2626", text: "#ff6b6b" },
+  "CRITICAL — nothing works without this": { bg: "#DC262622", border: "#DC2626", text: "#ff6b6b" },
+  "CRITICAL": { bg: "#DC262622", border: "#DC2626", text: "#ff6b6b" },
+  "CRITICAL — usually the strongest criterion": { bg: "#DC262622", border: "#DC2626", text: "#ff6b6b" },
+  "CRITICAL — most time-consuming part": { bg: "#DC262622", border: "#DC2626", text: "#ff6b6b" },
+  "CRITICAL — most common RFE target": { bg: "#DC262622", border: "#DC2626", text: "#ff6b6b" },
+  "CRITICAL — quality control": { bg: "#DC262622", border: "#DC2626", text: "#ff6b6b" },
+  "CRITICAL — feeds the entire petition": { bg: "#DC262622", border: "#DC2626", text: "#ff6b6b" },
+  "CRITICAL — final gate": { bg: "#DC262622", border: "#DC2626", text: "#ff6b6b" },
+  "HIGH": { bg: "#D9770622", border: "#D97706", text: "#f59e0b" },
+  "HIGH — long lead time": { bg: "#D9770622", border: "#D97706", text: "#f59e0b" },
+  "HIGH — often easiest to prove": { bg: "#D9770622", border: "#D97706", text: "#f59e0b" },
+  "HIGH — controls everything": { bg: "#D9770622", border: "#D97706", text: "#f59e0b" },
+  "HIGH if awards exist": { bg: "#D9770622", border: "#D97706", text: "#f59e0b" },
+  "HIGH if publications exist": { bg: "#D9770622", border: "#D97706", text: "#f59e0b" },
+  "HIGH for Indian nationals": { bg: "#D9770622", border: "#D97706", text: "#f59e0b" },
+  "HIGH — prepare before filing": { bg: "#D9770622", border: "#D97706", text: "#f59e0b" },
+  "MODERATE — fast to build": { bg: "#2E8B5722", border: "#2E8B57", text: "#4ade80" },
+  "OPTIONAL": { bg: "#4A7FC122", border: "#4A7FC1", text: "#60a5fa" },
+};
+
+export default function EB1ASystem() {
+  const [selected, setSelected] = useState(null);
+  const [expandedPhase, setExpandedPhase] = useState(null);
+
+  const totalArtifacts = phases.reduce((sum, p) => sum + p.artifacts.length, 0);
+
+  return (
+    <div style={{
+      fontFamily: "'Georgia', 'Times New Roman', serif",
+      background: "#0a0a12",
+      minHeight: "100vh",
+      color: "#e8e0d0",
+    }}>
+      {/* Header */}
+      <div style={{
+        background: "linear-gradient(135deg, #0a0a1a 0%, #0f1a30 50%, #1a0f0a 100%)",
+        borderBottom: "1px solid #C9A84C44",
+        padding: "48px 40px 36px",
+        textAlign: "center",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundImage: "radial-gradient(circle at 20% 50%, #C9A84C08 0%, transparent 50%), radial-gradient(circle at 80% 20%, #4A7FC108 0%, transparent 50%)",
+          pointerEvents: "none",
+        }} />
+        <div style={{
+          display: "inline-block",
+          border: "1px solid #C9A84C66",
+          borderRadius: "4px",
+          padding: "4px 16px",
+          fontSize: "11px",
+          letterSpacing: "3px",
+          textTransform: "uppercase",
+          color: "#C9A84C",
+          marginBottom: "20px",
+          fontFamily: "'Arial', sans-serif",
+        }}>
+          AiVass · Purpose. Proof. Permanence.
+        </div>
+        <h1 style={{
+          fontSize: "clamp(24px, 4vw, 42px)",
+          fontWeight: "700",
+          lineHeight: "1.2",
+          margin: "0 0 16px",
+          color: "#f0e8d0",
+          letterSpacing: "-0.5px",
+        }}>
+          The Complete EB-1A Self-Petition System
+        </h1>
+        <p style={{
+          fontSize: "17px",
+          color: "#a09080",
+          maxWidth: "620px",
+          margin: "0 auto 24px",
+          fontStyle: "italic",
+        }}>
+          32 artifacts · 7 phases · From first assessment to USCIS filing
+        </p>
+        <div style={{ display: "flex", justifyContent: "center", gap: "32px", flexWrap: "wrap" }}>
+          {[
+            { label: "Phases", value: "7" },
+            { label: "Total Artifacts", value: String(totalArtifacts) },
+            { label: "Criteria Covered", value: "9/10" },
+            { label: "Target Timeline", value: "4–6 mo" },
+          ].map(s => (
+            <div key={s.label} style={{ textAlign: "center" }}>
+              <div style={{ fontSize: "28px", fontWeight: "700", color: "#C9A84C", lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: "11px", color: "#806050", letterSpacing: "1px", textTransform: "uppercase", fontFamily: "Arial, sans-serif", marginTop: "4px" }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{
+        padding: "16px 40px",
+        borderBottom: "1px solid #ffffff11",
+        display: "flex",
+        gap: "24px",
+        flexWrap: "wrap",
+        alignItems: "center",
+        background: "#0d0d18",
+        fontFamily: "Arial, sans-serif",
+        fontSize: "12px",
+      }}>
+        <span style={{ color: "#606070" }}>Priority:</span>
+        {[
+          { label: "CRITICAL", color: "#ff6b6b", bg: "#DC262622", border: "#DC2626" },
+          { label: "HIGH", color: "#f59e0b", bg: "#D9770622", border: "#D97706" },
+          { label: "MODERATE", color: "#4ade80", bg: "#2E8B5722", border: "#2E8B57" },
+          { label: "OPTIONAL", color: "#60a5fa", bg: "#4A7FC122", border: "#4A7FC1" },
+        ].map(l => (
+          <span key={l.label} style={{
+            display: "inline-flex", alignItems: "center", gap: "6px",
+            background: l.bg, border: `1px solid ${l.border}`,
+            borderRadius: "4px", padding: "2px 10px", color: l.color,
+            fontWeight: "700", letterSpacing: "0.5px",
+          }}>{l.label}</span>
+        ))}
+        <span style={{ color: "#606070", marginLeft: "auto" }}>Click any artifact for full detail</span>
+      </div>
+
+      {/* Phase Grid */}
+      <div style={{ padding: "32px 24px 64px", maxWidth: "1400px", margin: "0 auto" }}>
+        {phases.map((phase) => (
+          <div key={phase.id} style={{ marginBottom: "40px" }}>
+            {/* Phase Header */}
+            <div
+              onClick={() => setExpandedPhase(expandedPhase === phase.id ? null : phase.id)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "16px",
+                marginBottom: "20px",
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              <div style={{
+                width: "48px", height: "48px",
+                borderRadius: "50%",
+                background: phase.bg,
+                border: `2px solid ${phase.color}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "16px", fontWeight: "700",
+                color: phase.color,
+                fontFamily: "Arial, sans-serif",
+                flexShrink: 0,
+              }}>
+                {phase.id}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
+                  <span style={{ fontSize: "11px", color: phase.color, letterSpacing: "2px", textTransform: "uppercase", fontFamily: "Arial, sans-serif" }}>{phase.label}</span>
+                  <h2 style={{ fontSize: "22px", fontWeight: "700", color: "#f0e8d0", margin: 0, letterSpacing: "-0.3px" }}>
+                    {phase.title}
+                  </h2>
+                  <span style={{ fontSize: "15px", color: "#706050", fontStyle: "italic" }}>— {phase.subtitle}</span>
+                </div>
+              </div>
+              <div style={{
+                background: phase.bg,
+                border: `1px solid ${phase.color}44`,
+                borderRadius: "4px",
+                padding: "4px 12px",
+                fontSize: "12px",
+                color: phase.color,
+                fontFamily: "Arial, sans-serif",
+              }}>
+                {phase.artifacts.length} artifact{phase.artifacts.length > 1 ? "s" : ""}
+              </div>
+              <span style={{ color: phase.color, fontSize: "18px" }}>
+                {expandedPhase === phase.id ? "▲" : "▼"}
+              </span>
+            </div>
+
+            {/* Connector line */}
+            <div style={{
+              height: "1px",
+              background: `linear-gradient(to right, ${phase.color}44, transparent)`,
+              marginBottom: "20px",
+            }} />
+
+            {/* Artifacts Grid */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+              gap: "16px",
+            }}>
+              {phase.artifacts.map((artifact) => {
+                const urg = urgencyStyle[artifact.urgency] || urgencyStyle["OPTIONAL"];
+                const isSelected = selected?.id === artifact.id;
+                const isFork = artifact.isFork;
+                const pathColor = artifact.pathTag === "FOUNDER" ? "#C9A84C" : artifact.pathTag === "SPECIALIST" ? "#4A7FC1" : null;
+
+                // Fork card gets full-width special treatment
+                if (isFork) {
+                  return (
+                    <div
+                      key={artifact.id}
+                      onClick={() => setSelected(isSelected ? null : artifact)}
+                      style={{
+                        gridColumn: "1 / -1",
+                        background: isSelected ? "#161620" : "#0f0f1a",
+                        border: `1px solid #C9A84C66`,
+                        borderRadius: "10px",
+                        padding: "24px",
+                        cursor: "pointer",
+                        boxShadow: "0 0 32px #C9A84C11",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+                        <span style={{ background: "#C9A84C22", border: "1px solid #C9A84C", borderRadius: "4px", padding: "2px 10px", fontSize: "11px", color: "#C9A84C", fontFamily: "Arial, sans-serif", fontWeight: "700" }}>
+                          {artifact.id}
+                        </span>
+                        <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#f0e8d0", margin: 0 }}>
+                          {artifact.title}
+                        </h3>
+                        <span style={{ background: "#DC262622", border: "1px solid #DC2626", borderRadius: "4px", padding: "2px 10px", fontSize: "10px", color: "#ff6b6b", fontFamily: "Arial, sans-serif", fontWeight: "700", marginLeft: "auto" }}>
+                          🔀 ROUTING FORK — answer this before anything else
+                        </span>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                        {artifact.forkPaths.map((fp) => (
+                          <div key={fp.label} style={{
+                            background: fp.color + "11",
+                            border: `1px solid ${fp.color}55`,
+                            borderRadius: "8px",
+                            padding: "16px",
+                          }}>
+                            <div style={{ fontSize: "12px", fontWeight: "700", color: fp.color, fontFamily: "Arial, sans-serif", letterSpacing: "1px", marginBottom: "8px" }}>
+                              {fp.label}
+                            </div>
+                            <p style={{ fontSize: "13px", color: "#a09080", lineHeight: "1.6", margin: 0, fontFamily: "Georgia, serif" }}>
+                              {fp.desc}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {isSelected && (
+                        <p style={{ fontSize: "13.5px", color: "#b0a898", lineHeight: "1.7", margin: "0", fontFamily: "Georgia, serif", borderTop: "1px solid #ffffff14", paddingTop: "14px" }}>
+                          {artifact.description}
+                        </p>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={artifact.id}
+                    onClick={() => setSelected(isSelected ? null : artifact)}
+                    style={{
+                      background: isSelected ? "#161620" : "#0f0f1a",
+                      border: isSelected ? `1px solid ${pathColor || phase.color}` : pathColor ? `1px solid ${pathColor}44` : "1px solid #ffffff14",
+                      borderRadius: "10px",
+                      padding: "20px",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      transform: isSelected ? "translateY(-2px)" : "none",
+                      boxShadow: isSelected ? `0 8px 32px ${phase.color}22` : "none",
+                    }}
+                  >
+                    {/* Card header */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px", marginBottom: "10px" }}>
+                      <div style={{
+                        background: "#ffffff08",
+                        border: "1px solid #ffffff14",
+                        borderRadius: "4px",
+                        padding: "2px 8px",
+                        fontSize: "11px",
+                        color: phase.color,
+                        fontFamily: "Arial, sans-serif",
+                        fontWeight: "700",
+                        letterSpacing: "0.5px",
+                        flexShrink: 0,
+                      }}>
+                        {artifact.id}
+                      </div>
+                      <span style={{
+                        background: urg.bg,
+                        border: `1px solid ${urg.border}`,
+                        borderRadius: "4px",
+                        padding: "2px 8px",
+                        fontSize: "10px",
+                        color: urg.text,
+                        fontFamily: "Arial, sans-serif",
+                        fontWeight: "700",
+                        letterSpacing: "0.3px",
+                        textAlign: "right",
+                      }}>
+                        {artifact.urgency.replace("CRITICAL — ", "CRITICAL").replace("HIGH — ", "HIGH").replace("MODERATE — ", "MOD.")}
+                      </span>
+                    </div>
+
+                    <h3 style={{
+                      fontSize: "15px",
+                      fontWeight: "700",
+                      color: "#e8e0d0",
+                      margin: "0 0 6px",
+                      lineHeight: "1.3",
+                    }}>
+                      {artifact.title}
+                    </h3>
+
+                    {artifact.pathTag && (
+                      <div style={{
+                        display: "inline-block",
+                        background: pathColor + "22",
+                        border: `1px solid ${pathColor}66`,
+                        borderRadius: "4px",
+                        padding: "2px 10px",
+                        fontSize: "10px",
+                        color: pathColor,
+                        fontFamily: "Arial, sans-serif",
+                        fontWeight: "700",
+                        letterSpacing: "1px",
+                        marginBottom: "8px",
+                      }}>
+                        {artifact.pathTag === "FOUNDER" ? "🏢 FOUNDER PATH" : "👤 SPECIALIST PATH"}
+                      </div>
+                    )}
+
+                    <div style={{
+                      fontSize: "12px",
+                      color: typeColors[artifact.type] || "#C9A84C",
+                      fontFamily: "Arial, sans-serif",
+                      marginBottom: "12px",
+                    }}>
+                      {artifact.format}
+                    </div>
+
+                    {/* Input/Output */}
+                    <div style={{
+                      background: "#ffffff06",
+                      borderRadius: "6px",
+                      padding: "10px 12px",
+                      marginBottom: "12px",
+                      fontSize: "12px",
+                      fontFamily: "Arial, sans-serif",
+                      lineHeight: "1.6",
+                    }}>
+                      <div style={{ color: "#606070", marginBottom: "4px" }}>
+                        <span style={{ color: "#4A7FC1" }}>IN:</span> {artifact.input}
+                      </div>
+                      <div style={{ color: "#606070" }}>
+                        <span style={{ color: "#2E8B57" }}>OUT:</span> {artifact.output}
+                      </div>
+                    </div>
+
+                    {/* Expanded detail */}
+                    {isSelected && (
+                      <div style={{
+                        borderTop: "1px solid #ffffff14",
+                        paddingTop: "12px",
+                        marginTop: "4px",
+                      }}>
+                        <p style={{
+                          fontSize: "13.5px",
+                          color: "#b0a898",
+                          lineHeight: "1.7",
+                          margin: "0 0 10px",
+                          fontFamily: "Georgia, serif",
+                        }}>
+                          {artifact.description}
+                        </p>
+                        <div style={{
+                          fontSize: "11px",
+                          color: "#706050",
+                          fontFamily: "Arial, sans-serif",
+                          letterSpacing: "0.3px",
+                        }}>
+                          FEEDS INTO → <span style={{ color: phase.color }}>{artifact.feedsInto}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {!isSelected && (
+                      <div style={{
+                        fontSize: "11px", color: "#404050",
+                        fontFamily: "Arial, sans-serif",
+                        textAlign: "right",
+                      }}>
+                        click for detail ↓
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div style={{
+        borderTop: "1px solid #C9A84C22",
+        padding: "32px 40px",
+        textAlign: "center",
+        background: "#0a0a12",
+      }}>
+        <div style={{ color: "#C9A84C", fontSize: "14px", marginBottom: "8px", fontFamily: "Arial, sans-serif", letterSpacing: "1px" }}>
+          AiVass LLC · Purpose. Proof. Permanence.
+        </div>
+        <div style={{ color: "#404050", fontSize: "12px", fontFamily: "Arial, sans-serif" }}>
+          This system is for strategic planning purposes only and does not constitute legal advice. Consult a licensed immigration attorney for filing, legal review, and RFE response.
+        </div>
+      </div>
+    </div>
+  );
+}
