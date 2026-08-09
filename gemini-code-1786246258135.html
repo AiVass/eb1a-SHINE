@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EB-1A Command Center Dashboard</title>
+  
+  <!-- React & Babel CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #080811;
+      font-family: 'Segoe UI', Roboto, -apple-system, sans-serif;
+      color: #E2E8F0;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    // --- System Schema Data ---
+    const initialPhases = [
+      {
+        id: 0,
+        label: "Phase 0",
+        title: "DISCOVERY",
+        subtitle: "Am I eligible?",
+        color: "#C9A84C",
+        bg: "#1a1a2e",
+        artifacts: [
+          {
+            id: "0.1",
+            title: "EB-1A Self-Eligibility Screener",
+            type: "Interactive Tool",
+            input: "LinkedIn URL or career summary",
+            output: "Go / No-Go score + top 3 viable criteria",
+            feedsInto: "1.1",
+            format: "🧮 Scored Quiz",
+            urgency: "ENTRY POINT",
+            status: "Completed",
+            description: "25-question scored assessment. Covers all 10 USCIS criteria.",
+          },
+          {
+            id: "0.2",
+            title: "EB-1A vs EB-2 NIW Decision Guide",
+            type: "Decision Guide",
+            input: "Output from 0.1",
+            output: "Recommended pathway with rationale",
+            feedsInto: "1.1",
+            format: "📋 Decision Tree",
+            urgency: "OPTIONAL",
+            status: "Completed",
+            description: "For Indian/Chinese nationals where priority dates matter critically.",
+          },
+          {
+            id: "0.3",
+            title: "Profile Type Identifier: Founder vs. Specialist",
+            type: "Decision Guide",
+            input: "Employment status + business ownership history",
+            output: "Profile type (Founder / Specialist / Hybrid)",
+            feedsInto: "1.2, 1.3, 2.5, 5.5A or 5.6",
+            format: "𔔀 Fork Decision",
+            urgency: "CRITICAL FIRST STEP",
+            status: "In Progress",
+            isFork: true,
+            forkPaths: [
+              { label: "SPECIALIST PATH", color: "#4A7FC1", desc: "Employed professional, researcher, or academic. Uses Personal Statement (5.5A)." },
+              { label: "FOUNDER PATH", color: "#C9A84C", desc: "Startup founder or entrepreneur. Uses Business Plan (5.6)." },
+            ],
+            description: "The most important routing decision in the entire system.",
+          },
+        ],
+      },
+      {
+        id: 1,
+        label: "Phase 1",
+        title: "FOUNDATION",
+        subtitle: "What is my case?",
+        color: "#4A7FC1",
+        bg: "#0f2744",
+        artifacts: [
+          {
+            id: "1.1",
+            title: "EB-1A Formatted CV Template",
+            type: "Template",
+            input: "Existing CV / LinkedIn export",
+            output: "Criteria-mapped CV",
+            feedsInto: "1.2, 2.0",
+            format: "📄 Word Template",
+            urgency: "CRITICAL FIRST STEP",
+            status: "In Progress",
+            description: "Sections are labeled by EB-1A criterion.",
+          },
+          {
+            id: "1.2",
+            title: "Field of Endeavor Definition Workbook",
+            type: "Workbook",
+            input: "Criteria-mapped CV (1.1)",
+            output: "Defined field, SOC code, peer group",
+            feedsInto: "2.0, 5.1, 5.4",
+            format: "📓 Guided Workbook",
+            urgency: "CRITICAL",
+            status: "Not Started",
+            description: "Step-by-step framework to define the candidate's field.",
+          },
+          {
+            id: "1.3",
+            title: "Top 5% Positioning Worksheet",
+            type: "Worksheet",
+            input: "Field definition (1.2)",
+            output: "Peer group definition + positioning thesis",
+            feedsInto: "2.0, 4.4, 5.4",
+            format: "📊 Worksheet",
+            urgency: "HIGH",
+            status: "Not Started",
+            description: "Forces candidate to establish peer group bounds.",
+          },
+        ],
+      },
+      {
+        id: 2,
+        label: "Phase 2",
+        title: "CRITERIA ANALYSIS",
+        subtitle: "How strong is my case?",
+        color: "#2E8B57",
+        bg: "#0a2010",
+        artifacts: [
+          {
+            id: "2.0",
+            title: "10-Criteria Assessment Master Matrix",
+            type: "Assessment Tool",
+            input: "CV (1.1) + Field definition (1.2)",
+            output: "Status for all 10 criteria",
+            feedsInto: "2.1–2.9, 3.3",
+            format: "🔢 Scored Matrix",
+            urgency: "CRITICAL",
+            status: "Not Started",
+            description: "The diagnostic engine. Scores all 10 USCIS criteria.",
+          },
+          {
+            id: "2.1",
+            title: "Criterion 1: Awards Evidence Builder",
+            type: "Evidence Builder",
+            input: "Awards listed in CV",
+            output: "Award analysis + narrative",
+            feedsInto: "3.1, 5.3",
+            format: "📝 Structured Template",
+            urgency: "HIGH",
+            status: "Not Started",
+            criterionNum: 1,
+            description: "Two-part test: (a) national/international recognition, (b) excellence.",
+          },
+          {
+            id: "2.2",
+            title: "Criterion 2: Memberships Strategy Kit",
+            type: "Strategy Kit",
+            input: "Professional background",
+            output: "Ranked target organizations",
+            feedsInto: "3.1, 3.3, 5.3",
+            format: "🗺 Strategy Guide",
+            urgency: "CRITICAL",
+            status: "Not Started",
+            criterionNum: 2,
+            description: "Tier 1/2/3 target organizations with requirements.",
+          },
+          {
+            id: "2.3",
+            title: "Criterion 3: Media Coverage Outreach Kit",
+            type: "Outreach Kit",
+            input: "Career highlights",
+            output: "Pitch templates + targets",
+            feedsInto: "3.1, 5.3",
+            format: "📢 Outreach System",
+            urgency: "HIGH",
+            status: "Not Started",
+            criterionNum: 3,
+            description: "Media outreach strategy and HARO/Connectively process.",
+          },
+          {
+            id: "2.4",
+            title: "Criterion 4: Judging Documentation Template",
+            type: "Documentation Template",
+            input: "Judging/reviewing activities",
+            output: "Exhibit-ready documentation",
+            feedsInto: "3.1, 5.3",
+            format: "📋 Documentation Pack",
+            urgency: "MODERATE",
+            status: "Not Started",
+            criterionNum: 4,
+            description: "Covers hackathons, peer reviews, and grant panels.",
+          },
+          {
+            id: "2.5",
+            title: "Criterion 5: Original Contributions Workbook",
+            type: "Workbook",
+            input: "Work history + metrics",
+            output: "Quantified contribution statements",
+            feedsInto: "3.1, 4.4, 5.3",
+            format: "📓 Workbook",
+            urgency: "CRITICAL",
+            status: "Not Started",
+            criterionNum: 5,
+            description: "Formula: [Action] + [System/Project] + [Quantified Outcome].",
+          },
+          {
+            id: "2.6",
+            title: "Criterion 6: Scholarly Authorship Package",
+            type: "Evidence Package",
+            input: "Publications & blogs",
+            output: "Publication inventory",
+            feedsInto: "3.1, 5.3",
+            format: "📚 Evidence Package",
+            urgency: "HIGH",
+            status: "Not Started",
+            criterionNum: 6,
+            description: "Books, peer-reviewed papers, and citation tracking.",
+          },
+          {
+            id: "2.8",
+            title: "Criterion 8: Critical Role Evidence Builder",
+            type: "Evidence Builder",
+            input: "Role documentation",
+            output: "Role evidence package",
+            feedsInto: "3.1, 4.4, 5.3",
+            format: "🏛 Evidence Builder",
+            urgency: "CRITICAL",
+            status: "In Progress",
+            criterionNum: 8,
+            description: "Leading role (authority/budget) vs. Critical role (but-for test).",
+          },
+          {
+            id: "2.9",
+            title: "Criterion 9: High Salary Benchmarking Kit",
+            type: "Benchmarking Kit",
+            input: "Salary history + BLS data",
+            output: "Percentile analysis report",
+            feedsInto: "3.1, 5.3",
+            format: "💰 Analysis Kit",
+            urgency: "HIGH",
+            status: "Not Started",
+            criterionNum: 9,
+            description: "Benchmarks against U.S. top 10% market earnings.",
+          },
+        ],
+      },
+      {
+        id: 3,
+        label: "Phase 3",
+        title: "EVIDENCE BUILDING",
+        subtitle: "Gather and organize",
+        color: "#8B5CF6",
+        bg: "#1a0a2e",
+        artifacts: [
+          {
+            id: "3.1",
+            title: "Master Evidence Inventory Tracker",
+            type: "Tracker",
+            input: "Outputs from Phase 2",
+            output: "Complete evidence catalog",
+            feedsInto: "3.3, 6.1",
+            format: "📊 Master Spreadsheet",
+            urgency: "CRITICAL",
+            status: "In Progress",
+            description: "The single source of truth for all exhibits.",
+          },
+          {
+            id: "3.2",
+            title: "Exhibit Organization System",
+            type: "System Guide",
+            input: "Evidence inventory (3.1)",
+            output: "Paginated exhibit package",
+            feedsInto: "6.1, 6.2",
+            format: "🗂 System + Templates",
+            urgency: "HIGH",
+            status: "Not Started",
+            description: "Naming conventions and cover page templates.",
+          },
+          {
+            id: "3.3",
+            title: "6-Month Remediation Planner",
+            type: "Planning Tool",
+            input: "Master matrix (2.0) + Inventory (3.1)",
+            output: "Prioritized weekly action plan",
+            feedsInto: "Phase 2–4 Artifacts",
+            format: "🗓 Planner",
+            urgency: "HIGH",
+            status: "Not Started",
+            description: "Converts gap analysis into weekly evidence building.",
+          },
+        ],
+      },
+      {
+        id: 4,
+        label: "Phase 4",
+        title: "EXPERT LETTERS",
+        subtitle: "Build support network",
+        color: "#D97706",
+        bg: "#1a1000",
+        artifacts: [
+          {
+            id: "4.1",
+            title: "Letter Writer Identification Matrix",
+            type: "Strategy Tool",
+            input: "CV + Field definition",
+            output: "10-12 target experts by tier",
+            feedsInto: "4.2, 4.3, 4.4",
+            format: "🎯 Strategy Matrix",
+            urgency: "CRITICAL",
+            status: "Not Started",
+            description: "Tier 1 (Independent) / Tier 2 (Execs) / Tier 3 (Peers).",
+          },
+          {
+            id: "4.2",
+            title: "Letter Request Email Templates",
+            type: "Template Pack",
+            input: "Target list (4.1)",
+            output: "Customized outreach emails",
+            feedsInto: "4.3",
+            format: "✉️ Email Templates",
+            urgency: "HIGH",
+            status: "Not Started",
+            description: "Outreach templates for professors, executives, and managers.",
+          },
+          {
+            id: "4.3",
+            title: "Evidence Portfolio for Writers",
+            type: "Package Template",
+            input: "CV + Contributions",
+            output: "Writer briefing package",
+            feedsInto: "4.4",
+            format: "📦 Briefing Package",
+            urgency: "HIGH",
+            status: "Not Started",
+            description: "1-page bio, key achievements, and criteria guidelines.",
+          },
+          {
+            id: "4.4",
+            title: "Letter Briefing Document (per writer)",
+            type: "Template",
+            input: "Writer's profile",
+            output: "Personalized letter specification",
+            feedsInto: "4.5",
+            format: "📝 Per-Writer Brief",
+            urgency: "CRITICAL",
+            status: "Not Started",
+            description: "Specifies 2-4 criteria each expert will attest to.",
+          },
+          {
+            id: "4.5",
+            title: "Letter Quality Review Checklist",
+            type: "Checklist",
+            input: "Draft letters",
+            output: "Pass/Fail review + revision requests",
+            feedsInto: "6.2",
+            format: "✅ Review Checklist",
+            urgency: "HIGH",
+            status: "Not Started",
+            description: "8-point quality check before signature.",
+          },
+        ],
+      },
+      {
+        id: 5,
+        label: "Phase 5",
+        title: "PETITION DRAFTING",
+        subtitle: "Write your case",
+        color: "#DC2626",
+        bg: "#1a0808",
+        artifacts: [
+          {
+            id: "5.1",
+            title: "Summary of Contributions (SOC)",
+            type: "Core Document",
+            input: "Phase 2 outputs + Field def",
+            output: "Master evidence narrative",
+            feedsInto: "5.4",
+            format: "📄 Master Narrative",
+            urgency: "CRITICAL",
+            status: "Not Started",
+            description: "The core engine document that feeds the cover letter.",
+          },
+          {
+            id: "5.2",
+            title: "Field of Endeavor Statement",
+            type: "Petition Section",
+            input: "Field definition (1.2)",
+            output: "2-3 paragraph field statement",
+            feedsInto: "5.4",
+            format: "📝 Petition Language",
+            urgency: "HIGH",
+            status: "Not Started",
+            description: "Establishes field boundaries and top 5% peer group.",
+          },
+          {
+            id: "5.3",
+            title: "Criterion Narrative Drafts",
+            type: "Petition Sections",
+            input: "SOC sections",
+            output: "Modular criterion sections",
+            feedsInto: "5.4",
+            format: "📝 Modular Drafts",
+            urgency: "CRITICAL",
+            status: "Not Started",
+            description: "Individual petition sections ordered strongest to weakest.",
+          },
+          {
+            id: "5.4",
+            title: "Petition Cover Letter (Form I-140)",
+            type: "Core Filing Document",
+            input: "SOC + Field stmt + Narratives",
+            output: "Complete I-140 legal cover letter",
+            feedsInto: "6.2",
+            format: "📄 Legal Document",
+            urgency: "CRITICAL",
+            status: "Not Started",
+            description: "The main petition document structure incorporating Kazarian steps.",
+          },
+          {
+            id: "5.5A",
+            title: "Personal Statement Template",
+            type: "Template",
+            input: "Career narrative",
+            output: "Personal statement on US work",
+            feedsInto: "5.4, 6.2",
+            format: "📝 Narrative Template",
+            urgency: "HIGH",
+            pathTag: "SPECIALIST",
+            status: "Not Started",
+            description: "For employed professionals & researchers (2-4 pages).",
+          },
+          {
+            id: "5.6",
+            title: "EB-1A Business Plan Template",
+            type: "Core Filing Document",
+            input: "Traction, market, financial plan",
+            output: "15-25 page Business Plan",
+            feedsInto: "5.4, 6.2",
+            format: "📊 Business Plan",
+            urgency: "CRITICAL",
+            pathTag: "FOUNDER",
+            status: "Not Started",
+            description: "Replaces Personal Statement for startup founders.",
+          },
+        ],
+      },
+      {
+        id: 6,
+        label: "Phase 6",
+        title: "ASSEMBLY & FILING",
+        subtitle: "Submit with confidence",
+        color: "#059669",
+        bg: "#001a10",
+        artifacts: [
+          {
+            id: "6.1",
+            title: "Exhibit Index & Summary System",
+            type: "Filing Component",
+            input: "Evidence inventory (3.1)",
+            output: "Formatted exhibit index & summaries",
+            feedsInto: "6.2",
+            format: "📋 Index Templates",
+            urgency: "HIGH",
+            status: "Not Started",
+            description: "Numbered index and 1-paragraph summaries for all exhibits.",
+          },
+          {
+            id: "6.2",
+            title: "Complete Filing Package Checklist",
+            type: "Filing Checklist",
+            input: "All petition components",
+            output: "Final Go/No-Go verification",
+            feedsInto: "USCIS Submission",
+            format: "✅ Master Checklist",
+            urgency: "CRITICAL",
+            status: "Not Started",
+            description: "Final quality check for forms, fees, and exhibit binding.",
+          },
+          {
+            id: "6.3",
+            title: "Premium Processing Decision Guide",
+            type: "Decision Guide",
+            input: "Priority date + visa status",
+            output: "Form I-907 timing recommendation",
+            feedsInto: "6.2",
+            format: "📋 Decision Guide",
+            urgency: "HIGH",
+            status: "Not Started",
+            description: "Determines whether to file with 15-day Premium Processing.",
+          },
+          {
+            id: "6.4",
+            title: "RFE Anticipation & Defense Framework",
+            type: "Defense Document",
+            input: "Filed petition package",
+            output: "Pre-built RFE response triggers",
+            feedsInto: "USCIS Response",
+            format: "🛡 Defense Kit",
+            urgency: "HIGH",
+            status: "Not Started",
+            description: "Prepares responses for the top 8 most common RFE grounds.",
+          },
+        ],
+      },
+    ];
+
+    function EB1ADashboard() {
+      const [profilePath, setProfilePath] = useState("FOUNDER");
+      const [searchTerm, setSearchTerm] = useState("");
+      const [selectedStatusFilter, setSelectedStatusFilter] = useState("ALL");
+      const [activeTab, setActiveTab] = useState("pipeline");
+      const [artifacts, setArtifacts] = useState(() => {
+        let flat = [];
+        initialPhases.forEach((p) => {
+          p.artifacts.forEach((art) => {
+            flat.push({ ...art, phaseId: p.id, phaseTitle: p.title, phaseColor: p.color });
+          });
+        });
+        return flat;
+      });
+
+      const toggleArtifactStatus = (id) => {
+        setArtifacts((prev) =>
+          prev.map((art) => {
+            if (art.id === id) {
+              const nextStatus =
+                art.status === "Not Started"
+                  ? "In Progress"
+                  : art.status === "In Progress"
+                  ? "Completed"
+                  : "Not Started";
+              return { ...art, status: nextStatus };
+            }
+            return art;
+          })
+        );
+      };
+
+      const filteredArtifacts = useMemo(() => {
+        return artifacts.filter((art) => {
+          const matchPath =
+            profilePath === "ALL" ||
+            !art.pathTag ||
+            art.pathTag === profilePath;
+          const matchSearch =
+            art.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            art.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            art.description.toLowerCase().includes(searchTerm.toLowerCase());
+          const matchStatus =
+            selectedStatusFilter === "ALL" || art.status === selectedStatusFilter;
+          return matchPath && matchSearch && matchStatus;
+        });
+      }, [artifacts, profilePath, searchTerm, selectedStatusFilter]);
+
+      const stats = useMemo(() => {
+        const total = filteredArtifacts.length;
+        const completed = filteredArtifacts.filter((a) => a.status === "Completed").length;
+        const inProgress = filteredArtifacts.filter((a) => a.status === "In Progress").length;
+        const criticalRemaining = filteredArtifacts.filter(
+          (a) => a.urgency.startsWith("CRITICAL") && a.status !== "Completed"
+        ).length;
+        const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+        return { total, completed, inProgress, criticalRemaining, progressPercent };
+      }, [filteredArtifacts]);
+
+      const criteriaStats = useMemo(() => {
+        const critArtifacts = artifacts.filter((a) => a.criterionNum !== undefined);
+        const completed = critArtifacts.filter((a) => a.status === "Completed").length;
+        const inProgress = critArtifacts.filter((a) => a.status === "In Progress").length;
+        return {
+          total: 10,
+          mapped: critArtifacts.length,
+          completed,
+          inProgress,
+        };
+      }, [artifacts]);
+
+      return (
+        <div style={{ padding: "24px 32px", minHeight: "100vh" }}>
+          {/* Header */}
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            borderBottom: "1px solid #1E293B",
+            paddingBottom: "20px",
+            marginBottom: "24px",
+            flexWrap: "wrap",
+            gap: "16px",
+          }}>
+            <div>
+              <div style={{
+                fontSize: "11px",
+                color: "#C9A84C",
+                letterSpacing: "2px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                marginBottom: "4px",
+              }}>
+                AiVass Command Center
+              </div>
+              <h1 style={{ fontSize: "26px", fontWeight: 700, color: "#F8FAFC", margin: 0 }}>
+                EB-1A Self-Petition System Dashboard
+              </h1>
+            </div>
+
+            {/* Pathway Switcher */}
+            <div style={{
+              background: "#0F172A",
+              border: "1px solid #334155",
+              borderRadius: "8px",
+              padding: "4px",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}>
+              <span style={{ fontSize: "11px", color: "#94A3B8", padding: "0 8px", fontWeight: 600 }}>
+                PROFILE PATH:
+              </span>
+              {[
+                { id: "FOUNDER", label: "🏢 Founder", color: "#C9A84C" },
+                { id: "SPECIALIST", label: "👤 Specialist", color: "#4A7FC1" },
+                { id: "ALL", label: "🌐 Show All", color: "#94A3B8" },
+              ].map((path) => {
+                const active = profilePath === path.id;
+                return (
+                  <button
+                    key={path.id}
+                    onClick={() => setProfilePath(path.id)}
+                    style={{
+                      background: active ? path.color : "transparent",
+                      color: active ? "#000" : "#94A3B8",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "6px 14px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    {path.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* KPI Cards */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "16px",
+            marginBottom: "28px",
+          }}>
+            <div style={{ background: "#0F172A", border: "1px solid #1E293B", borderRadius: "10px", padding: "16px 20px" }}>
+              <div style={{ fontSize: "12px", color: "#64748B", fontWeight: 600 }}>PETITION PROGRESS</div>
+              <div style={{ fontSize: "28px", fontWeight: 800, color: "#38BDF8", marginTop: "4px" }}>
+                {stats.progressPercent}%
+              </div>
+              <div style={{ width: "100%", height: "6px", background: "#1E293B", borderRadius: "3px", marginTop: "8px", overflow: "hidden" }}>
+                <div style={{ width: `${stats.progressPercent}%`, height: "100%", background: "#38BDF8", transition: "width 0.3s ease" }} />
+              </div>
+            </div>
+
+            <div style={{ background: "#0F172A", border: "1px solid #1E293B", borderRadius: "10px", padding: "16px 20px" }}>
+              <div style={{ fontSize: "12px", color: "#64748B", fontWeight: 600 }}>ARTIFACT STATUS</div>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#F8FAFC", marginTop: "4px" }}>
+                <span style={{ color: "#4ADE80" }}>{stats.completed}</span> /{" "}
+                <span style={{ color: "#F59E0B" }}>{stats.inProgress}</span> /{" "}
+                <span style={{ color: "#64748B" }}>{stats.total - stats.completed - stats.inProgress}</span>
+              </div>
+              <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "4px" }}>
+                Done · In Progress · Remaining
+              </div>
+            </div>
+
+            <div style={{ background: "#0F172A", border: "1px solid #1E293B", borderRadius: "10px", padding: "16px 20px" }}>
+              <div style={{ fontSize: "12px", color: "#64748B", fontWeight: 600 }}>CRITICAL BLOCKS REMAINING</div>
+              <div style={{ fontSize: "28px", fontWeight: 800, color: stats.criticalRemaining > 0 ? "#EF4444" : "#4ADE80", marginTop: "4px" }}>
+                {stats.criticalRemaining}
+              </div>
+              <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "4px" }}>Must complete before filing</div>
+            </div>
+
+            <div style={{ background: "#0F172A", border: "1px solid #1E293B", borderRadius: "10px", padding: "16px 20px" }}>
+              <div style={{ fontSize: "12px", color: "#64748B", fontWeight: 600 }}>CRITERIA READINESS (MIN 3)</div>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#F8FAFC", marginTop: "4px" }}>
+                {criteriaStats.completed + criteriaStats.inProgress} / 10
+              </div>
+              <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "4px" }}>
+                {criteriaStats.completed} verified · {criteriaStats.inProgress} active draft
+              </div>
+            </div>
+          </div>
+
+          {/* Control Bar */}
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            background: "#0F172A",
+            padding: "12px 16px",
+            borderRadius: "10px",
+            border: "1px solid #1E293B",
+            marginBottom: "24px",
+            flexWrap: "wrap",
+            gap: "12px",
+          }}>
+            <div style={{ display: "flex", gap: "8px" }}>
+              {[
+                { id: "pipeline", label: "🗺 Phase Pipeline" },
+                { id: "kanban", label: "📋 Progress Board" },
+                { id: "criteria", label: "🎯 Criteria Analysis Matrix" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    background: activeTab === tab.id ? "#1E293B" : "transparent",
+                    color: activeTab === tab.id ? "#F8FAFC" : "#94A3B8",
+                    border: "1px solid",
+                    borderColor: activeTab === tab.id ? "#334155" : "transparent",
+                    borderRadius: "6px",
+                    padding: "8px 16px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <select
+                value={selectedStatusFilter}
+                onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                style={{
+                  background: "#1E293B",
+                  color: "#E2E8F0",
+                  border: "1px solid #334155",
+                  borderRadius: "6px",
+                  padding: "8px 12px",
+                  fontSize: "12px",
+                  outline: "none",
+                }}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+
+              <input
+                type="text"
+                placeholder="Search artifacts..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  background: "#1E293B",
+                  color: "#E2E8F0",
+                  border: "1px solid #334155",
+                  borderRadius: "6px",
+                  padding: "8px 14px",
+                  fontSize: "12px",
+                  outline: "none",
+                  width: "180px",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* VIEW 1: PHASE PIPELINE */}
+          {activeTab === "pipeline" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+              {initialPhases.map((phase) => {
+                const phaseArtifacts = filteredArtifacts.filter((a) => a.phaseId === phase.id);
+                if (phaseArtifacts.length === 0) return null;
+
+                return (
+                  <div
+                    key={phase.id}
+                    style={{
+                      background: "#0D1117",
+                      border: `1px solid ${phase.color}33`,
+                      borderRadius: "12px",
+                      padding: "20px",
+                    }}
+                  >
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: "16px",
+                      borderBottom: `1px solid ${phase.color}22`,
+                      paddingBottom: "12px",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "50%",
+                          background: phase.bg,
+                          border: `2px solid ${phase.color}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 700,
+                          color: phase.color,
+                          fontSize: "14px",
+                        }}>
+                          {phase.id}
+                        </div>
+                        <div>
+                          <span style={{ fontSize: "10px", color: phase.color, letterSpacing: "1.5px", fontWeight: 700, textTransform: "uppercase" }}>
+                            {phase.label}
+                          </span>
+                          <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0, color: "#F8FAFC" }}>
+                            {phase.title}{" "}
+                            <span style={{ fontSize: "14px", color: "#64748B", fontWeight: 400 }}>
+                              — {phase.subtitle}
+                            </span>
+                          </h2>
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: "12px",
+                        color: phase.color,
+                        background: phase.bg,
+                        padding: "4px 12px",
+                        borderRadius: "20px",
+                        border: `1px solid ${phase.color}44`,
+                      }}>
+                        {phaseArtifacts.length} Artifacts
+                      </div>
+                    </div>
+
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                      gap: "16px",
+                    }}>
+                      {phaseArtifacts.map((art) => {
+                        const isCompleted = art.status === "Completed";
+                        const isInProgress = art.status === "In Progress";
+
+                        return (
+                          <div
+                            key={art.id}
+                            onClick={() => toggleArtifactStatus(art.id)}
+                            style={{
+                              background: "#161B22",
+                              border: `1px solid ${
+                                isCompleted
+                                  ? "#22C55E66"
+                                  : isInProgress
+                                  ? "#F59E0B66"
+                                  : "#30363D"
+                              }`,
+                              borderRadius: "8px",
+                              padding: "16px",
+                              cursor: "pointer",
+                              transition: "all 0.2s ease",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                              <span style={{
+                                background: "#21262D",
+                                border: "1px solid #30363D",
+                                borderRadius: "4px",
+                                padding: "2px 6px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                color: phase.color,
+                              }}>
+                                {art.id}
+                              </span>
+
+                              <span style={{
+                                fontSize: "10px",
+                                fontWeight: 700,
+                                padding: "2px 8px",
+                                borderRadius: "4px",
+                                background: isCompleted ? "#14532D" : isInProgress ? "#78350F" : "#1E293B",
+                                color: isCompleted ? "#4ADE80" : isInProgress ? "#FBBF24" : "#94A3B8",
+                              }}>
+                                {art.status}
+                              </span>
+                            </div>
+
+                            <h3 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 6px", color: "#F1F5F9" }}>
+                              {art.title}
+                            </h3>
+
+                            {art.pathTag && (
+                              <span style={{
+                                display: "inline-block",
+                                background: art.pathTag === "FOUNDER" ? "#C9A84C22" : "#4A7FC122",
+                                color: art.pathTag === "FOUNDER" ? "#C9A84C" : "#4A7FC1",
+                                border: `1px solid ${art.pathTag === "FOUNDER" ? "#C9A84C44" : "#4A7FC144"}`,
+                                fontSize: "10px",
+                                fontWeight: 700,
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                marginBottom: "8px",
+                              }}>
+                                {art.pathTag} SPECIFIC
+                              </span>
+                            )}
+
+                            <p style={{ fontSize: "12px", color: "#8B949E", margin: "0 0 12px", lineHeight: "1.4" }}>
+                              {art.description}
+                            </p>
+
+                            <div style={{
+                              fontSize: "11px",
+                              color: "#6E7681",
+                              borderTop: "1px solid #21262D",
+                              paddingTop: "8px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                            }}>
+                              <span>OUT: {art.output}</span>
+                              <span style={{ color: phase.color }}>FEEDS → {art.feedsInto}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* VIEW 2: KANBAN BOARD */}
+          {activeTab === "kanban" && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", alignItems: "start" }}>
+              {["Not Started", "In Progress", "Completed"].map((status) => {
+                const list = filteredArtifacts.filter((a) => a.status === status);
+                const statusColor = status === "Completed" ? "#22C55E" : status === "In Progress" ? "#F59E0B" : "#64748B";
+
+                return (
+                  <div
+                    key={status}
+                    style={{
+                      background: "#0D1117",
+                      border: `1px solid ${statusColor}33`,
+                      borderRadius: "10px",
+                      padding: "16px",
+                      minHeight: "500px",
+                    }}
+                  >
+                    <div style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "16px",
+                      borderBottom: `2px solid ${statusColor}`,
+                      paddingBottom: "8px",
+                    }}>
+                      <h3 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#F8FAFC" }}>
+                        {status}
+                      </h3>
+                      <span style={{
+                        background: "#1E293B",
+                        color: statusColor,
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: "12px",
+                      }}>
+                        {list.length}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      {list.map((art) => (
+                        <div
+                          key={art.id}
+                          onClick={() => toggleArtifactStatus(art.id)}
+                          style={{
+                            background: "#161B22",
+                            border: "1px solid #30363D",
+                            borderRadius: "8px",
+                            padding: "12px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: art.phaseColor, fontWeight: 700, marginBottom: "4px" }}>
+                            <span>{art.id}</span>
+                            <span>{art.phaseTitle}</span>
+                          </div>
+                          <div style={{ fontSize: "13px", fontWeight: 700, color: "#F1F5F9", marginBottom: "6px" }}>
+                            {art.title}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "#8B949E" }}>
+                            Format: {art.format}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* VIEW 3: CRITERIA MATRIX */}
+          {activeTab === "criteria" && (
+            <div style={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: "12px", padding: "24px" }}>
+              <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#F8FAFC", margin: "0 0 16px" }}>
+                10 USCIS Criteria Diagnostic Mapping
+              </h2>
+              <p style={{ fontSize: "13px", color: "#94A3B8", marginBottom: "20px" }}>
+                USCIS requires satisfying a minimum of 3 out of 10 criteria. Click an artifact state to update evidence gathering status.
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {artifacts
+                  .filter((a) => a.criterionNum !== undefined)
+                  .map((art) => {
+                    const isCompleted = art.status === "Completed";
+                    const isInProgress = art.status === "In Progress";
+
+                    return (
+                      <div
+                        key={art.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          background: "#161B22",
+                          border: "1px solid #30363D",
+                          borderRadius: "8px",
+                          padding: "12px 16px",
+                          gap: "16px",
+                        }}
+                      >
+                        <div style={{ width: "120px", flexShrink: 0 }}>
+                          <span style={{ fontSize: "12px", fontWeight: 700, color: "#2E8B57" }}>
+                            Criterion {art.criterionNum}
+                          </span>
+                        </div>
+
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: "14px", fontWeight: 700, color: "#F8FAFC" }}>
+                            {art.title}
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#8B949E" }}>
+                            {art.description}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => toggleArtifactStatus(art.id)}
+                          style={{
+                            background: isCompleted ? "#14532D" : isInProgress ? "#78350F" : "#1E293B",
+                            color: isCompleted ? "#4ADE80" : isInProgress ? "#FBBF24" : "#94A3B8",
+                            border: "1px solid #334155",
+                            borderRadius: "6px",
+                            padding: "6px 12px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {art.status}
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<EB1ADashboard />);
+  </script>
+</body>
+</html>
